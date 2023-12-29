@@ -1,27 +1,18 @@
-//AMOURI YACINE L3 GROUPE 3
+/* %%%%%%% AMOURI %%%%%%%%% YACINE %%%%%%% GROUPE 3 %%%%%%%% L3 %%%%%%*/
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
 
-// Global variables
-int n1, m1, n2, m2, in, produced, count, consumed, somme;
-int **A;
-int **B;
-int **C;
-int *BUFFER; // Utilisation d'un tableau simple pour le buffer au lieu d'une matrice
-int shouldExit = 0;
+#define N 100
 
-// Buffer
-#define N 5 // max element dans notre buffer
+int n1, m1, n2, m2;
+int **A, **B, **C;
+int *BUFFER;
 
-// Semaphores
 pthread_mutex_t mutex;
-sem_t empty;
-sem_t full;
+sem_t empty, full;
 
-// Producer
 void *producer(void *arg)
 {
     int index = *(int *)arg;
@@ -37,12 +28,9 @@ void *producer(void *arg)
 
         sem_wait(&empty);
         pthread_mutex_lock(&mutex);
+        
 
-        BUFFER[in] = somme;
-        in = (in + 1) % N;
-
-        count++;
-        produced++;
+        BUFFER[index * m2 + i] = somme;
 
         pthread_mutex_unlock(&mutex);
         sem_post(&full);
@@ -51,28 +39,17 @@ void *producer(void *arg)
     pthread_exit(NULL);
 }
 
-// Consumer
 void *consumer(void *arg)
 {
     int index = *(int *)arg;
-    int somme;
 
-    while (!shouldExit)
+    for (int i = 0; i < m2; i++)
     {
         sem_wait(&full);
         pthread_mutex_lock(&mutex);
 
-        if (shouldExit)
-        {
-            pthread_mutex_unlock(&mutex);
-            break;
-        }
-
-        somme = BUFFER[in];
-        A[index][in] = somme;
-        in = (in + 1) % N;
-        count--;
-        consumed++;
+        // Utilisez (index * m2 + i) pour accéder à la bonne position dans BUFFER
+        A[index][i] = BUFFER[(index * m2 + i) % (n1 * m2)];
 
         pthread_mutex_unlock(&mutex);
         sem_post(&empty);
@@ -81,10 +58,8 @@ void *consumer(void *arg)
     pthread_exit(NULL);
 }
 
-
 void generatorMatrices()
 {
-    
     B = (int **)malloc(n1 * sizeof(int *));
     C = (int **)malloc(m1 * sizeof(int *));
     for (int i = 0; i < n1; i++)
@@ -95,8 +70,7 @@ void generatorMatrices()
     {
         C[i] = (int *)malloc(m2 * sizeof(int));
     }
-
-    //remplir matrices B et C
+    //Remplire matrices B et C
     for (int i = 0; i < n1; i++)
     {
         for (int j = 0; j < m1; j++)
@@ -113,13 +87,12 @@ void generatorMatrices()
         }
     }
 
-    
-    BUFFER = (int *)malloc(N * sizeof(int));
+    BUFFER = (int *)malloc(n1 * m2 * sizeof(int));
 }
 
-// afficher matrices
 void printMatrices()
 {
+//Afficher les matrices B et C
     printf("\n| Matrice B\n");
     for (int i = 0; i < n1; i++)
     {
@@ -130,7 +103,6 @@ void printMatrices()
         printf("\n");
     }
 
-   
     printf("\n| Matrice C\n");
     for (int i = 0; i < m1; i++)
     {
@@ -145,68 +117,66 @@ void printMatrices()
 
 int main(int argc, char *argv[])
 {
-    printf("Entre les colonnes et les lignes de la matrice B :\n ");
+// intialise les sempahore
+    sem_init(&full, 0, 0);
+    sem_init(&empty, 0, N);
+    pthread_mutex_init(&mutex, NULL);
+
+    printf("Entre nombre des lignes et colognes de matrice B:\n");
     scanf("%d %d", &n1, &m1);
-    printf("Entre les colonnes et les lignes de la matrice C : \n");
+    printf("Entre nombre des lignes et colognes de matrice C\n");
     scanf("%d %d", &n2, &m2);
 
     if (m1 != n2)
     {
-        perror("Impossible de multiplier B et C.\n");
+        perror("impossible de multiple  B et C.\n");
         exit(EXIT_FAILURE);
     }
 
-    
     generatorMatrices();
+    printMatrices();
 
-  
     A = (int **)malloc(n1 * sizeof(int *));
     for (int i = 0; i < n1; i++)
     {
         A[i] = (int *)malloc(m2 * sizeof(int));
     }
 
-    // Declarer threads
     pthread_t producers_t[n1];
-    pthread_t consumer_t[N];
+    pthread_t consumer_t[n1];
 
-    // Creation thread du producers
     for (int i = 0; i < n1; i++)
     {
         int *index = malloc(sizeof(int));
         *index = i;
         if (pthread_create(&producers_t[i], NULL, producer, index) != 0)
         {
-            perror("Erreur de création du thread producer.\n");
+            perror("Erreur de creation thread de producer.\n");
             exit(EXIT_FAILURE);
         }
     }
 
-    // Creation threa du consumer
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < n1; i++)
     {
         int *index = malloc(sizeof(int));
         *index = i;
         if (pthread_create(&consumer_t[i], NULL, consumer, index) != 0)
         {
-            perror("Erreur de création du thread consumer.\n");
+            perror("Erreur de creation thread de consumer.\n");
             exit(EXIT_FAILURE);
         }
     }
 
-    
     for (int i = 0; i < n1; i++)
     {
         pthread_join(producers_t[i], NULL);
     }
 
-   
-     for (int i = 0; i < N; i++)
+    for (int i = 0; i < n1; i++)
     {
         pthread_join(consumer_t[i], NULL);
     }
 
-    // affiche matrix A
     printf("\n| Matrice A\n");
     for (int i = 0; i < n1; i++)
     {
@@ -218,7 +188,11 @@ int main(int argc, char *argv[])
     }
 
    
+    free(BUFFER);
+
     pthread_mutex_destroy(&mutex);
     sem_destroy(&empty);
     sem_destroy(&full);
+
+    return 0;
 }
