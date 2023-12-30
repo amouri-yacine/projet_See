@@ -1,4 +1,4 @@
-/* %%%%%%% AMOURI %%%%%%%%% YACINE %%%%%%% GROUPE 3 %%%%%%%% L3 %%%%%%*/
+/* %%%%%% AMOURI %%%%%%%%% YACINE %%%%%%% GROUPE 3 %%%%%%%% L3 %%%%%%*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
